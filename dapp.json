@@ -306,9 +306,34 @@
       "expectText": "by you · updated"
     },
     {
+      "name": "Own recipe Open is a cmd-clickable deep link",
+      "path": "/",
+      "expectSelector": "#home-mine-list a[href*=\"?path=/?c=\"]"
+    },
+    {
+      "name": "Community View is a cmd-clickable deep link",
+      "path": "/",
+      "expectSelector": "#home-community-list a[href*=\"?path=/?s=\"]"
+    },
+    {
+      "name": "Collection Open is a cmd-clickable deep link",
+      "path": "/",
+      "expectSelector": "#home-collections-list a[href*=\"?path=/?coll=\"]"
+    },
+    {
+      "name": "Header back control is a real link",
+      "path": "/?c=900003",
+      "expectSelector": "a#home-btn[href]"
+    },
+    {
       "name": "Collection deep link opens the collection",
       "path": "/?coll=900002",
       "expectText": "Staging Demo Community Picks"
+    },
+    {
+      "name": "Collection back control is a real link",
+      "path": "/?coll=900002",
+      "expectSelector": "a#collection-back[href]"
     },
     {
       "name": "Collection comments render",

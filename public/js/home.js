@@ -325,13 +325,34 @@ const Home = {
     return wrap;
   },
 
-  _actionBtn(label, primary) {
-    const btn = document.createElement('button');
-    btn.className = primary
+  _actionClasses(primary) {
+    return primary
       ? 'px-3 py-1.5 text-xs rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors'
       : 'px-3 py-1.5 text-xs rounded-lg bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 transition-colors';
+  },
+
+  _actionBtn(label, primary) {
+    const btn = document.createElement('button');
+    btn.className = this._actionClasses(primary);
     btn.textContent = label;
     return btn;
+  },
+
+  // Navigation twin of _actionBtn: a real <a> whose href is the platform
+  // deep link for the app-relative route `path`, so cmd/ctrl/shift- and
+  // middle-clicks open the destination in a new tab (issue #45). A plain
+  // click is intercepted and stays in-app via onOpen.
+  _actionLink(label, primary, path, onOpen) {
+    const a = document.createElement('a');
+    a.className = `${this._actionClasses(primary)} inline-block text-center`;
+    a.textContent = label;
+    a.href = App.deepLinkUrl(path);
+    a.addEventListener('click', (e) => {
+      if (App.wantsNewTab(e)) return;
+      e.preventDefault();
+      onOpen();
+    });
+    return a;
   },
 
   // Icon-only so the five-button action row still fits a phone-width card.
@@ -385,8 +406,7 @@ const Home = {
 
     const actions = document.createElement('div');
     actions.className = 'flex flex-wrap items-center gap-2 mt-auto pt-1';
-    const openBtn = this._actionBtn(t('common.open'), true);
-    openBtn.addEventListener('click', () => {
+    const openBtn = this._actionLink(t('common.open'), true, `/?c=${r.conversation_id}`, () => {
       if (typeof Store !== 'undefined') Store.selectConversation(r.conversation_id);
     });
     const forkBtn = this._actionBtn(t('common.fork'));
@@ -424,11 +444,10 @@ const Home = {
         <p class="text-sm truncate">${this.esc(c.title || t('card.newConversation'))}</p>
         <p class="text-xs text-zinc-400 dark:text-zinc-500">${t('card.noRecipeYet')}${updatedBit}</p>
       </div>`;
-    const openBtn = this._actionBtn(t('common.open'), true);
-    openBtn.classList.add('shrink-0');
-    openBtn.addEventListener('click', () => {
+    const openBtn = this._actionLink(t('common.open'), true, `/?c=${c.id}`, () => {
       if (typeof Store !== 'undefined') Store.selectConversation(c.id);
     });
+    openBtn.classList.add('shrink-0');
     el.appendChild(openBtn);
     el.appendChild(this._deleteBtn(c.id));
     return el;
@@ -479,8 +498,7 @@ const Home = {
 
     const actions = document.createElement('div');
     actions.className = 'flex flex-wrap items-center gap-2 mt-auto pt-1';
-    const viewBtn = this._actionBtn(t('common.view'), true);
-    viewBtn.addEventListener('click', () => this.viewShared(s));
+    const viewBtn = this._actionLink(t('common.view'), true, `/?s=${s.id}`, () => this.viewShared(s));
     const forkBtn = this._actionBtn(t('common.fork'));
     forkBtn.addEventListener('click', () => {
       if (App.isAnonymous) return App.promptSignIn(t('signin.fork'));
@@ -582,8 +600,8 @@ const Home = {
     if (c.description) el.appendChild(this._description(c.description));
     const actions = document.createElement('div');
     actions.className = 'flex flex-wrap items-center gap-2 mt-auto pt-1';
-    const openBtn = this._actionBtn(t('common.open'), true);
-    openBtn.addEventListener('click', () => this.openCollection(c.id));
+    const openBtn = this._actionLink(t('common.open'), true, `/?coll=${c.id}`,
+      () => this.openCollection(c.id));
     actions.appendChild(openBtn);
     el.appendChild(actions);
     return el;
@@ -606,8 +624,8 @@ const Home = {
     if (c.description) el.appendChild(this._description(c.description));
     const actions = document.createElement('div');
     actions.className = 'flex flex-wrap items-center gap-2 mt-auto pt-1';
-    const openBtn = this._actionBtn(t('common.browse'), true);
-    openBtn.addEventListener('click', () => this.openCollection(c.id));
+    const openBtn = this._actionLink(t('common.browse'), true, `/?coll=${c.id}`,
+      () => this.openCollection(c.id));
     actions.appendChild(openBtn);
     el.appendChild(actions);
     return el;
@@ -666,7 +684,7 @@ const Home = {
       tn('card.recipes', c.items.length)];
     if (c.is_shared && c.members?.length) headBits.push(tn('card.members', c.members.length));
     head.innerHTML = `
-      <button id="collection-back" class="text-sm text-blue-500 hover:text-blue-400 transition-colors">${t('coll.back')}</button>
+      <a id="collection-back" href="${App.deepLinkUrl(null)}" class="inline-block text-sm text-blue-500 hover:text-blue-400 transition-colors">${t('coll.back')}</a>
       <div class="flex items-start justify-between gap-3 flex-wrap">
         <div class="min-w-0">
           <h2 class="text-xl font-bold">${this.esc(c.name)}</h2>
@@ -676,7 +694,11 @@ const Home = {
         <div class="flex gap-2 flex-wrap" id="collection-detail-actions"></div>
       </div>`;
     container.appendChild(head);
-    head.querySelector('#collection-back').addEventListener('click', () => this.closeCollection());
+    head.querySelector('#collection-back').addEventListener('click', (e) => {
+      if (App.wantsNewTab(e)) return;
+      e.preventDefault();
+      this.closeCollection();
+    });
 
     const actions = head.querySelector('#collection-detail-actions');
     const copyInvite = (token) => {
@@ -842,8 +864,7 @@ const Home = {
 
     const actions = document.createElement('div');
     actions.className = 'flex flex-wrap items-center gap-2 mt-auto pt-1';
-    const viewBtn = this._actionBtn(t('common.view'), true);
-    viewBtn.addEventListener('click', () => {
+    const openItem = () => {
       if (item.conversation_id && typeof Store !== 'undefined') {
         Store.selectConversation(item.conversation_id);
       } else if (item.shared_recipe_id) {
@@ -854,7 +875,18 @@ const Home = {
         // Snapshot-only: open read-only from the saved copy.
         Store.openShared({ id: null, data: recipe, username: item.username, is_mine: false, current_version: 1 });
       }
-    });
+    };
+    // Snapshot-only copies are routeless (see Store.openShared), so there is
+    // no deep link to carry — those keep a plain button.
+    const itemPath = item.conversation_id ? `/?c=${item.conversation_id}`
+      : item.shared_recipe_id ? `/?s=${item.shared_recipe_id}` : null;
+    let viewBtn;
+    if (itemPath) {
+      viewBtn = this._actionLink(t('common.view'), true, itemPath, openItem);
+    } else {
+      viewBtn = this._actionBtn(t('common.view'), true);
+      viewBtn.addEventListener('click', openItem);
+    }
     actions.appendChild(viewBtn);
     if (!App.isAnonymous) {
       const removeBtn = this._actionBtn(t('common.remove'));
