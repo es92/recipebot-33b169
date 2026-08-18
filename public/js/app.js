@@ -114,13 +114,32 @@ App.promptSignIn = function (reason) {
 // FINAL fragment param and its value the app-relative path+query in wire
 // format — the ?s= query form satisfies that with no encoded '#'.
 App.setSignInPath = function (path) {
-  const href = path
-    ? `${App.PLATFORM_APP_URL}?path=${path}`
-    : App.PLATFORM_APP_URL;
+  const href = App.deepLinkUrl(path);
   for (const id of ['sign-in-btn', 'sign-in-go']) {
     const el = document.getElementById(id);
     if (el) el.href = href;
   }
+};
+
+// Platform deep link for an app-relative route (`/?c=…`, `/?s=…`,
+// `/?coll=…`), per the same ?path= contract as setSignInPath above. Opened
+// as a top-level document — which is what a cmd/ctrl/middle-click on an
+// anchor does — the platform shell embeds the app with a fresh token and
+// forwards the route, so the new tab lands signed-in on the same screen.
+// The app's own origin would boot tokenless (anonymous), so in-app nav
+// anchors must carry THIS as href, never a bare relative URL (issue #45).
+App.deepLinkUrl = function (path) {
+  return path
+    ? `${App.PLATFORM_APP_URL}?path=${path}`
+    : App.PLATFORM_APP_URL;
+};
+
+// True when a click asks the browser for a new tab/window (cmd/ctrl/
+// shift/alt held). Nav handlers return early without preventDefault so the
+// anchor's href — the platform deep link — is followed natively.
+// Middle-click never fires `click`, so anchors handle it by themselves.
+App.wantsNewTab = function (e) {
+  return e.metaKey || e.ctrlKey || e.shiftKey || e.altKey;
 };
 
 window.HashParams = {
@@ -518,7 +537,10 @@ async function restoreRoute(route) {
 }
 
 function setupHomeButton() {
-  document.getElementById('home-btn')?.addEventListener('click', () => {
+  document.getElementById('home-btn')?.addEventListener('click', (e) => {
+    // Modified click: let the browser follow the deep-link href (new tab).
+    if (App.wantsNewTab(e)) return;
+    e.preventDefault();
     // Clear the whole recipe route — "I went home" is itself the state a
     // refresh should restore.
     HashParams.set('c', null);
