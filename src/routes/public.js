@@ -12,7 +12,7 @@ const log = require('../services/logger');
 // Lookups are slug-only on purpose — no numeric-ID enumeration — and the
 // payload carries usernames but never user ids.
 
-const PLATFORM_APP_URL = 'https://social-vibecoding.usernodelabs.org/#app/recipebot-33b169/full';
+const PLATFORM_APP_URL = 'https://my.onhomeroom.com/#app/recipebot-33b169/full';
 
 // Pre-paint theme boot for these standalone pages: honour an EXPLICIT
 // light/dark choice the visitor made in the app (same origin, so the same
